@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Gesture Controlled 3D Particles</title>
+  <title>3D Gesture Particles</title>
   <style>
     * {
       box-sizing: border-box;
@@ -26,51 +26,20 @@
     #canvas-container:active {
       cursor: grabbing;
     }
-    #webcam-panel {
+    /* Kotak Webcam Bersih Tanpa Teks */
+    #webcam-container {
       position: absolute;
       bottom: 24px;
       right: 24px;
-      display: flex;
-      flex-direction: column;
-      align-items: flex-end;
-      z-index: 50;
-      pointer-events: none;
-    }
-    /* Indikator Aksi yang Jelas */
-    #action-badge {
-      margin-bottom: 10px;
-      padding: 6px 14px;
-      border-radius: 9999px;
-      background: rgba(8, 8, 14, 0.88);
-      backdrop-filter: blur(14px);
-      border: 1.5px solid #38bdf8;
-      box-shadow: 0 0 20px rgba(56, 189, 248, 0.35);
-      color: #ffffff;
-      font-size: 13px;
-      font-weight: 700;
-      letter-spacing: 0.5px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      transition: all 0.3s ease;
-    }
-    #action-badge .dot {
-      width: 9px;
-      height: 9px;
-      border-radius: 50%;
-      background: #38bdf8;
-      box-shadow: 0 0 8px currentColor;
-    }
-    #webcam-box {
       width: 220px;
       height: 160px;
       border-radius: 16px;
       overflow: hidden;
-      position: relative;
-      background: rgba(0, 0, 0, 0.7);
+      background: rgba(0, 0, 0, 0.65);
       backdrop-filter: blur(16px);
       border: 2px solid rgba(56, 189, 248, 0.4);
       box-shadow: 0 0 25px rgba(56, 189, 248, 0.25);
+      z-index: 50;
       transition: border-color 0.4s ease, box-shadow 0.4s ease;
     }
     #webcam {
@@ -85,42 +54,36 @@
       inset: 0;
       width: 100%;
       height: 100%;
+      pointer-events: none;
     }
   </style>
 
-  <!-- Three.js & MediaPipe via CDN -->
+  <!-- Three.js & MediaPipe Hands CDN -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
 </head>
 <body>
 
+  <!-- Layar Partikel Penuh -->
   <div id="canvas-container"></div>
 
-  <div id="webcam-panel">
-    <!-- Indikator Aksi Terang & Jelas -->
-    <div id="action-badge">
-      <div class="dot" id="badge-dot"></div>
-      <span id="badge-text">🌌 Mode Rileks: Nebula Galaxy</span>
-    </div>
-    
-    <div id="webcam-box">
-      <video id="webcam" autoplay playsinline muted></video>
-      <canvas id="skeleton-canvas" width="220" height="160"></canvas>
-    </div>
+  <!-- Frame Kamera (Bersih Tanpa Teks) -->
+  <div id="webcam-container">
+    <video id="webcam" autoplay playsinline muted></video>
+    <canvas id="skeleton-canvas" width="220" height="160"></canvas>
   </div>
 
   <script>
-    // =======================================================
+    // =========================================================================
     // 1. WEB AUDIO SYNTHESIZER
-    // =======================================================
+    // =========================================================================
     class SoundEngine {
       constructor() {
         this.ctx = null;
         this.lastTrigger = 0;
         this.currentGesture = null;
       }
-
       init() {
         if (!this.ctx) {
           const AudioContextClass = window.AudioContext || window.webkitAudioContext;
@@ -130,10 +93,9 @@
           this.ctx.resume();
         }
       }
-
-      playSound(gesture) {
+      play(gesture) {
         const now = performance.now();
-        if (this.currentGesture === gesture && now - this.lastTrigger < 800) return;
+        if (this.currentGesture === gesture && now - this.lastTrigger < 700) return;
         this.currentGesture = gesture;
         this.lastTrigger = now;
         this.init();
@@ -142,38 +104,35 @@
         try {
           const t = this.ctx.currentTime;
           if (gesture === 'fist') {
-            // Detak Jantung Bass
-            const thud = (time, freq, dur) => {
+            const beat = (time, freq, dur) => {
               const osc = this.ctx.createOscillator();
-              const gain = this.ctx.createGain();
+              const g = this.ctx.createGain();
               osc.frequency.setValueAtTime(freq, time);
-              osc.frequency.exponentialRampToValueAtTime(35, time + dur);
-              gain.gain.setValueAtTime(0.001, time);
-              gain.gain.linearRampToValueAtTime(0.7, time + 0.02);
-              gain.gain.exponentialRampToValueAtTime(0.001, time + dur);
-              osc.connect(gain);
-              gain.connect(this.ctx.destination);
+              osc.frequency.exponentialRampToValueAtTime(32, time + dur);
+              g.gain.setValueAtTime(0.001, time);
+              g.gain.linearRampToValueAtTime(0.65, time + 0.02);
+              g.gain.exponentialRampToValueAtTime(0.001, time + dur);
+              osc.connect(g);
+              g.connect(this.ctx.destination);
               osc.start(time);
               osc.stop(time + dur + 0.05);
             };
-            thud(t, 75, 0.16);
-            thud(t + 0.22, 85, 0.22);
+            beat(t, 75, 0.16);
+            beat(t + 0.22, 85, 0.22);
           } else if (gesture === 'spread') {
-            // Angin & Chime Kosmik
             [261.6, 392.0, 523.2, 784.0, 1046.5].forEach((f, i) => {
               const osc = this.ctx.createOscillator();
               const g = this.ctx.createGain();
-              osc.frequency.setValueAtTime(f, t + i * 0.07);
-              g.gain.setValueAtTime(0.001, t + i * 0.07);
-              g.gain.linearRampToValueAtTime(0.15, t + i * 0.07 + 0.02);
-              g.gain.exponentialRampToValueAtTime(0.0001, t + i * 0.07 + 0.8);
+              osc.frequency.setValueAtTime(f, t + i * 0.06);
+              g.gain.setValueAtTime(0.001, t + i * 0.06);
+              g.gain.linearRampToValueAtTime(0.15, t + i * 0.06 + 0.02);
+              g.gain.exponentialRampToValueAtTime(0.0001, t + i * 0.06 + 0.8);
               osc.connect(g);
               g.connect(this.ctx.destination);
-              osc.start(t + i * 0.07);
-              osc.stop(t + i * 0.07 + 0.85);
+              osc.start(t + i * 0.06);
+              osc.stop(t + i * 0.06 + 0.85);
             });
           } else if (gesture === 'index') {
-            // Harpa Romantis (LOVE YOU)
             [523.2, 659.2, 784.0, 987.7, 1174.6].forEach((f, i) => {
               const osc = this.ctx.createOscillator();
               const g = this.ctx.createGain();
@@ -188,7 +147,6 @@
               osc.stop(t + i * 0.06 + 1.1);
             });
           } else if (gesture === 'thumb') {
-            // Kristal Aurora (MISS YOU)
             [392.0, 466.1, 587.3, 698.4, 880.0].forEach((f, i) => {
               const osc = this.ctx.createOscillator();
               const g = this.ctx.createGain();
@@ -202,13 +160,12 @@
               osc.stop(t + i * 0.05 + 1.3);
             });
           } else if (gesture === 'middle') {
-            // Cyber 808 Bass Punch (FUCK YOU)
             const osc = this.ctx.createOscillator();
             const g = this.ctx.createGain();
             osc.type = 'sawtooth';
-            osc.frequency.setValueAtTime(160, t);
-            osc.frequency.exponentialRampToValueAtTime(38, t + 0.35);
-            g.gain.setValueAtTime(0.8, t);
+            osc.frequency.setValueAtTime(150, t);
+            osc.frequency.exponentialRampToValueAtTime(36, t + 0.35);
+            g.gain.setValueAtTime(0.7, t);
             g.gain.exponentialRampToValueAtTime(0.001, t + 0.45);
             osc.connect(g);
             g.connect(this.ctx.destination);
@@ -218,16 +175,15 @@
         } catch (e) {}
       }
     }
-
     const sound = new SoundEngine();
     window.addEventListener('click', () => sound.init(), { once: true });
     window.addEventListener('touchstart', () => sound.init(), { once: true });
 
-    // =======================================================
-    // 2. THREE.JS PARTICLE ENGINE DENGAN BENTUK & TEKS TAJAM
-    // =======================================================
+    // =========================================================================
+    // 2. THREE.JS 3D PARTICLE ENGINE DENGAN BENTUK EKSTRUSI 3D
+    // =========================================================================
     const PARTICLE_COUNT = 16000;
-    let scene, camera, renderer, particles, geometry;
+    let scene, camera, renderer, particles, geometry, particleMaterial;
     let currentPositions = new Float32Array(PARTICLE_COUNT * 3);
     let targetPositions = new Float32Array(PARTICLE_COUNT * 3);
     let currentColors = new Float32Array(PARTICLE_COUNT * 3);
@@ -235,9 +191,20 @@
     let velocities = new Float32Array(PARTICLE_COUNT * 3);
 
     let activeGesture = 'idle';
+    let transitionTimer = 0.0;
+    const baseParticleSize = 0.13;
 
-    // Tekstur partikel tajam dan berpijar
-    function createGlowTexture() {
+    // Data tracking 3D tangan
+    const hand3D = {
+      rotX: 0, rotY: 0, rotZ: 0,
+      transX: 0, transY: 0,
+      scale: 1.0,
+      targetRotX: 0, targetRotY: 0, targetRotZ: 0,
+      targetTransX: 0, targetTransY: 0,
+      targetScale: 1.0
+    };
+
+    function createParticleTexture() {
       const canvas = document.createElement('canvas');
       canvas.width = 128;
       canvas.height = 128;
@@ -253,7 +220,7 @@
       return new THREE.CanvasTexture(canvas);
     }
 
-    // 0. Idle: Galaksi Nebula Spiral
+    // 0. Nebula Galaxy
     function getIdleNebula() {
       const pos = new Float32Array(PARTICLE_COUNT * 3);
       const col = new Float32Array(PARTICLE_COUNT * 3);
@@ -285,7 +252,7 @@
     function getHeartPositions() {
       const pos = new Float32Array(PARTICLE_COUNT * 3);
       const col = new Float32Array(PARTICLE_COUNT * 3);
-      const BODY_COUNT = Math.floor(PARTICLE_COUNT * 0.9);
+      const BODY_COUNT = Math.floor(PARTICLE_COUNT * 0.92);
 
       for (let i = 0; i < PARTICLE_COUNT; i++) {
         const idx = i * 3;
@@ -305,8 +272,8 @@
           pos[idx + 1] = hy * scale + 0.6;
           pos[idx + 2] = hz * scale;
 
-          if (vol < 0.76) {
-            col[idx] = 1.0; col[idx + 1] = 0.85; col[idx + 2] = 0.4;
+          if (vol < 0.75) {
+            col[idx] = 1.0; col[idx + 1] = 0.88; col[idx + 2] = 0.45;
           } else {
             col[idx] = 1.0; col[idx + 1] = 0.05; col[idx + 2] = 0.35;
           }
@@ -323,7 +290,7 @@
       return { pos, col };
     }
 
-    // 2. Telapak Melebar: Tata Surya Lengkap dengan Garis Orbit Pas Layar
+    // 2. Telapak Melebar: Tata Surya 3D Lengkap
     function getSolarSystem() {
       const pos = new Float32Array(PARTICLE_COUNT * 3);
       const col = new Float32Array(PARTICLE_COUNT * 3);
@@ -343,7 +310,7 @@
         p++;
       }
 
-      // Planet & Orbit
+      // 8 Planet Berwarna
       const planets = [
         { dist: 2.8, size: 0.32, count: 450, r: 0.85, g: 0.75, b: 0.65 },
         { dist: 4.0, size: 0.48, count: 700, r: 1.0, g: 0.82, b: 0.4 },
@@ -382,7 +349,7 @@
         }
       });
 
-      // Garis Orbit Konsentris
+      // Garis Orbit
       while (p < PARTICLE_COUNT) {
         const idx = p * 3;
         const pl = planets[p % planets.length];
@@ -396,31 +363,51 @@
       return { pos, col };
     }
 
-    // 3. Teks Partikel Padat & Tajam (LOVE YOU, MISS YOU, FUCK YOU)
-    function getTextParticles(text, sub, scheme) {
+    // 3. Huruf 3D Ekstrusi Tebal & Sangat Jelas (Dua Baris Bersusun)
+    function create3DText(topWord, bottomWord, scheme) {
       const pos = new Float32Array(PARTICLE_COUNT * 3);
       const col = new Float32Array(PARTICLE_COUNT * 3);
 
       const canvas = document.createElement('canvas');
-      canvas.width = 1000;
-      canvas.height = 320;
+      canvas.width = 1100;
+      canvas.height = 520;
       const ctx = canvas.getContext('2d');
+
       ctx.fillStyle = 'black';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
+
       ctx.fillStyle = 'white';
-      ctx.font = '900 135px "Arial Black", Impact, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(text, canvas.width / 2, canvas.height / 2 - (sub ? 26 : 0));
-      if (sub) {
-        ctx.font = '700 36px Arial, sans-serif';
-        ctx.fillText(sub, canvas.width / 2, canvas.height / 2 + 76);
-      }
+      ctx.strokeStyle = 'white';
+      ctx.lineWidth = 6;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+
+      const drawSpaced = (text, centerY) => {
+        ctx.font = '900 145px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        const tracking = 18; // Spasi agar huruf tidak bertabrakan
+        const letters = text.split('');
+        const widths = letters.map(ch => ctx.measureText(ch).width);
+        const totalW = widths.reduce((a, b) => a + b, 0) + (letters.length - 1) * tracking;
+        let curX = (canvas.width - totalW) / 2;
+
+        letters.forEach((ch, idx) => {
+          const charW = widths[idx];
+          const posX = curX + charW / 2;
+          ctx.strokeText(ch, posX, centerY);
+          ctx.fillText(ch, posX, centerY);
+          curX += charW + tracking;
+        });
+      };
+
+      drawSpaced(topWord, 160);
+      drawSpaced(bottomWord, 360);
 
       const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
       const pixels = [];
       const step = 2;
-      const scale = 0.021; // Skala pas di layar tanpa terpotong
+      const scale = 0.021;
 
       for (let y = 0; y < canvas.height; y += step) {
         for (let x = 0; x < canvas.width; x += step) {
@@ -429,60 +416,74 @@
             pixels.push({
               x: (x - canvas.width / 2) * scale,
               y: -(y - canvas.height / 2) * scale,
-              isEdge: alpha < 210
+              isEdge: alpha < 225
             });
           }
         }
       }
 
-      // 92% Partikel langsung membentuk huruf secara padat
-      const textCount = Math.min(pixels.length, Math.floor(PARTICLE_COUNT * 0.92));
+      // 95% Partikel membentuk huruf 3D bervolume
+      const textCount = Math.min(pixels.length, Math.floor(PARTICLE_COUNT * 0.95));
       let p = 0;
+
       for (let i = 0; i < textCount && p < PARTICLE_COUNT; i++) {
         const idx = p * 3;
         const px = pixels[Math.floor((i / textCount) * pixels.length)];
-        
-        // Z terkunci datar agar teks razor-sharp dan tidak buram
+
+        // Kedalaman 3D 3 Lapisan (Depan, Sisi Bevel, Belakang)
+        const layer = Math.random();
+        let z = 0;
+        if (layer < 0.38) {
+          z = 0.55 + (Math.random() - 0.5) * 0.05; // Lapisan depan putih terang
+        } else if (layer < 0.72) {
+          z = (Math.random() - 0.5) * 1.1; // Sisi ketebalan 3D
+        } else {
+          z = -0.55 + (Math.random() - 0.5) * 0.05; // Lapisan belakang
+        }
+
         pos[idx] = px.x;
         pos[idx + 1] = px.y;
-        pos[idx + 2] = (Math.random() - 0.5) * 0.05;
+        pos[idx + 2] = z;
 
         const blend = (px.x + 8) / 16;
         if (scheme === 'romantic') {
-          if (!px.isEdge && Math.random() > 0.35) {
-            // Inti Putih Cerah
-            col[idx] = 1.0; col[idx + 1] = 0.95; col[idx + 2] = 0.95;
+          if (z > 0.4 && !px.isEdge && Math.random() > 0.25) {
+            col[idx] = 1.0; col[idx + 1] = 0.97; col[idx + 2] = 0.98; // Inti putih
           } else {
-            // Tepi Merah Mawar & Magenta
-            col[idx] = 1.0; col[idx + 1] = 0.05 + blend * 0.2; col[idx + 2] = 0.45 + (1 - blend) * 0.45;
+            col[idx] = 1.0; col[idx + 1] = 0.08 + blend * 0.18; col[idx + 2] = 0.45 + (1 - blend) * 0.45;
           }
         } else if (scheme === 'celestial') {
-          if (!px.isEdge && Math.random() > 0.35) {
-            col[idx] = 0.95; col[idx + 1] = 1.0; col[idx + 2] = 1.0;
+          if (z > 0.4 && !px.isEdge && Math.random() > 0.25) {
+            col[idx] = 0.96; col[idx + 1] = 1.0; col[idx + 2] = 1.0;
           } else {
-            col[idx] = 0.05 + blend * 0.6; col[idx + 1] = 0.85 - blend * 0.25; col[idx + 2] = 1.0;
+            col[idx] = 0.06 + blend * 0.55; col[idx + 1] = 0.85 - blend * 0.2; col[idx + 2] = 1.0;
           }
         } else {
-          if (!px.isEdge && Math.random() > 0.35) {
-            col[idx] = 1.0; col[idx + 1] = 1.0; col[idx + 2] = 0.8;
+          if (z > 0.4 && !px.isEdge && Math.random() > 0.25) {
+            col[idx] = 1.0; col[idx + 1] = 0.98; col[idx + 2] = 0.82;
           } else {
-            col[idx] = 1.0; col[idx + 1] = 0.02 + blend * 0.15; col[idx + 2] = 0.55 - blend * 0.4;
+            col[idx] = 1.0; col[idx + 1] = 0.08 + blend * 0.25; col[idx + 2] = 0.22 - blend * 0.15;
           }
         }
         p++;
       }
 
-      // Sisa partikel sebagai kilau bintang di sekeliling
+      // Debu bintang di sekeliling
       while (p < PARTICLE_COUNT) {
         const idx = p * 3;
         const ang = Math.random() * Math.PI * 2;
-        const r = 9.5 + Math.random() * 4.5;
-        pos[idx] = Math.cos(ang) * r;
-        pos[idx + 1] = Math.sin(ang) * (r * 0.55);
+        const dist = 9.0 + Math.random() * 4.0;
+        pos[idx] = Math.cos(ang) * dist;
+        pos[idx + 1] = Math.sin(ang) * (dist * 0.6);
         pos[idx + 2] = (Math.random() - 0.5) * 1.5;
-        col[idx] = scheme === 'romantic' ? 1.0 : (scheme === 'celestial' ? 0.3 : 1.0);
-        col[idx + 1] = scheme === 'romantic' ? 0.4 : (scheme === 'celestial' ? 0.8 : 0.2);
-        col[idx + 2] = scheme === 'romantic' ? 0.6 : (scheme === 'celestial' ? 1.0 : 0.5);
+
+        if (scheme === 'romantic') {
+          col[idx] = 1.0; col[idx + 1] = 0.3; col[idx + 2] = 0.6;
+        } else if (scheme === 'celestial') {
+          col[idx] = 0.2; col[idx + 1] = 0.8; col[idx + 2] = 1.0;
+        } else {
+          col[idx] = 1.0; col[idx + 1] = 0.2; col[idx + 2] = 0.3;
+        }
         p++;
       }
 
@@ -493,18 +494,18 @@
       idle: getIdleNebula(),
       fist: getHeartPositions(),
       spread: getSolarSystem(),
-      index: getTextParticles('LOVE YOU', '❤️ FOREVER & ALWAYS ❤️', 'romantic'),
-      thumb: getTextParticles('MISS YOU', '✨ EVERY MOMENT ✨', 'celestial'),
-      middle: getTextParticles('FUCK YOU', '⚡ REBEL ATTITUDE ⚡', 'cyberpunk')
+      index: create3DText('LOVE', 'YOU', 'romantic'),
+      thumb: create3DText('MISS', 'YOU', 'celestial'),
+      middle: create3DText('FUCK', 'YOU', 'cyberpunk')
     };
 
-    function initThreeJS() {
+    function initThree() {
       const container = document.getElementById('canvas-container');
       scene = new THREE.Scene();
       camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 1000);
       camera.position.z = 15;
 
-      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
       renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
       renderer.setSize(window.innerWidth, window.innerHeight);
       renderer.setClearColor(0x020205, 1);
@@ -522,10 +523,9 @@
       geometry.setAttribute('position', new THREE.BufferAttribute(currentPositions, 3));
       geometry.setAttribute('color', new THREE.BufferAttribute(currentColors, 3));
 
-      // Ukuran partikel 0.13 agar tajam dan tidak bleed
-      const material = new THREE.PointsMaterial({
-        size: 0.13,
-        map: createGlowTexture(),
+      particleMaterial = new THREE.PointsMaterial({
+        size: baseParticleSize,
+        map: createParticleTexture(),
         vertexColors: true,
         blending: THREE.AdditiveBlending,
         transparent: true,
@@ -533,56 +533,65 @@
         depthWrite: false
       });
 
-      particles = new THREE.Points(geometry, material);
+      particles = new THREE.Points(geometry, particleMaterial);
       scene.add(particles);
 
-      window.addEventListener('resize', onWindowResize);
+      window.addEventListener('resize', onResize);
       animate();
     }
 
-    const gestureDetails = {
-      idle: { text: '🌌 Mode Rileks: Nebula Galaxy', color: '#38bdf8' },
-      fist: { text: '❤️ Kepalan Tangan: 3D Beating Heart', color: '#ff1493' },
-      spread: { text: '🪐 Telapak Melebar: Tata Surya & Planet', color: '#fbbf24' },
-      index: { text: '💖 Jari Telunjuk: LOVE YOU', color: '#f43f5e' },
-      thumb: { text: '✨ Jari Jempol: MISS YOU', color: '#0ea5e9' },
-      middle: { text: '⚡ Jari Tengah: FUCK YOU', color: '#f43f5e' }
-    };
-
+    // Transisi Jelas & Meledak (Supernova Shockwave)
     function setGesture(g) {
       if (activeGesture === g) return;
       activeGesture = g;
-      sound.playSound(g);
+      sound.play(g);
+
+      transitionTimer = 1.0; // Pemicu transisi dramatis
 
       const target = shapes[g] || shapes.idle;
-      for (let i = 0; i < PARTICLE_COUNT * 3; i++) {
+      const pos = geometry.attributes.position.array;
+
+      for (let i = 0; i < PARTICLE_COUNT * 3; i += 3) {
         targetPositions[i] = target.pos[i];
+        targetPositions[i + 1] = target.pos[i + 1];
+        targetPositions[i + 2] = target.pos[i + 2];
+
         targetColors[i] = target.col[i];
-        velocities[i] += (Math.random() - 0.5) * 0.8;
+        targetColors[i + 1] = target.col[i + 1];
+        targetColors[i + 2] = target.col[i + 2];
+
+        // Efek Ledakan Melingkar Menjauhi Titik Pusat
+        const px = pos[i];
+        const py = pos[i + 1];
+        const pz = pos[i + 2];
+        const dist = Math.hypot(px, py, pz) + 0.1;
+        const normX = px / dist;
+        const normY = py / dist;
+        const normZ = pz / dist;
+
+        const burstSpeed = 2.4 + Math.random() * 2.8;
+        velocities[i] += normX * burstSpeed + (Math.random() - 0.5) * 1.2;
+        velocities[i + 1] += normY * burstSpeed + (Math.random() - 0.5) * 1.2;
+        velocities[i + 2] += normZ * burstSpeed + (Math.random() - 0.5) * 1.5;
       }
 
-      // Perbarui Indikator Aksi
-      const info = gestureDetails[g] || gestureDetails.idle;
-      const badge = document.getElementById('action-badge');
-      const badgeDot = document.getElementById('badge-dot');
-      const badgeText = document.getElementById('badge-text');
-      const webcamBox = document.getElementById('webcam-box');
-
-      if (badge && badgeText) {
-        badge.style.borderColor = info.color;
-        badge.style.boxShadow = `0 0 20px ${info.color}66`;
-        badgeDot.style.background = info.color;
-        badgeText.textContent = info.text;
-      }
-      if (webcamBox) {
-        webcamBox.style.borderColor = info.color;
-        webcamBox.style.boxShadow = `0 0 25px ${info.color}44`;
+      // Efek Border Box Kamera Sesuai Aksi
+      const box = document.getElementById('webcam-container');
+      const colors = {
+        idle: '#38bdf8', fist: '#ff1493', spread: '#fbbf24',
+        index: '#f43f5e', thumb: '#0ea5e9', middle: '#f43f5e'
+      };
+      if (box) {
+        const c = colors[g] || '#38bdf8';
+        box.style.borderColor = c;
+        box.style.boxShadow = `0 0 25px ${c}55`;
       }
     }
 
     const clock = new THREE.Clock();
     function animate() {
       requestAnimationFrame(animate);
+      const delta = Math.min(clock.getDelta(), 0.05);
       const elapsedTime = clock.getElapsedTime();
       const pos = geometry.attributes.position.array;
       const col = geometry.attributes.color.array;
@@ -591,11 +600,35 @@
       const isSolar = activeGesture === 'spread';
       const isText = activeGesture === 'index' || activeGesture === 'thumb' || activeGesture === 'middle';
 
+      // Haluskan gerak 3D tangan
+      hand3D.rotX += (hand3D.targetRotX - hand3D.rotX) * 0.08;
+      hand3D.rotY += (hand3D.targetRotY - hand3D.rotY) * 0.08;
+      hand3D.rotZ += (hand3D.targetRotZ - hand3D.rotZ) * 0.08;
+      hand3D.transX += (hand3D.targetTransX - hand3D.transX) * 0.08;
+      hand3D.transY += (hand3D.targetTransY - hand3D.transY) * 0.08;
+      hand3D.scale += (hand3D.targetScale - hand3D.scale) * 0.08;
+
+      // Handle Transisi
+      let isTransitioning = false;
+      let phase = 0;
+      if (transitionTimer > 0) {
+        isTransitioning = true;
+        transitionTimer = Math.max(0, transitionTimer - delta * 1.25);
+        phase = 1.0 - transitionTimer;
+        // Kilau partikel membesar saat meledak
+        particleMaterial.size = baseParticleSize * (1.0 + Math.sin(phase * Math.PI) * 0.9);
+      } else {
+        particleMaterial.size = baseParticleSize;
+      }
+
+      const lerpSpeed = isTransitioning ? (phase < 0.35 ? 0.035 : 0.16) : 0.08;
+      const damping = isTransitioning && phase < 0.35 ? 0.92 : 0.83;
+
       let pulse = 1.0;
       if (isHeart) {
         const beat = (elapsedTime * 1.8) % 1.0;
-        if (beat < 0.15) pulse = 1.0 + Math.sin((beat / 0.15) * Math.PI) * 0.18;
-        else if (beat < 0.35) pulse = 1.0 + Math.sin(((beat - 0.15) / 0.2) * Math.PI) * 0.1;
+        if (beat < 0.15) pulse = 1.0 + Math.sin((beat / 0.15) * Math.PI) * 0.2;
+        else if (beat < 0.35) pulse = 1.0 + Math.sin(((beat - 0.15) / 0.2) * Math.PI) * 0.12;
       }
 
       for (let i = 0; i < PARTICLE_COUNT; i++) {
@@ -606,64 +639,73 @@
 
         if (isHeart) {
           tx *= pulse; ty *= pulse; tz *= pulse;
-        } else if (isSolar && i >= 3000 && i < 11500) {
+        } else if (isSolar && i >= 3000 && i < 12000) {
           const d = Math.sqrt(tx * tx + tz * tz);
-          if (d > 2.0) {
-            const ang = Math.atan2(tz, tx) + (0.22 / Math.sqrt(d)) * (elapsedTime * 0.4);
+          if (d > 2.5) {
+            const ang = Math.atan2(tz, tx) + (0.25 / Math.sqrt(d)) * (elapsedTime * 0.4);
             tx = Math.cos(ang) * d; tz = Math.sin(ang) * d;
           }
         } else if (isText) {
-          // Melayang lembut tanpa merusak bentuk huruf
-          ty += Math.sin(elapsedTime * 1.5) * 0.1;
+          // Ombak 3D di permukaan huruf
+          ty += Math.sin(elapsedTime * 1.8) * 0.08;
+          tz += Math.sin(elapsedTime * 2.5 + tx * 0.35) * 0.14;
         }
 
-        velocities[idx] = velocities[idx] * 0.85 + (tx - pos[idx]) * 0.075;
-        velocities[idx + 1] = velocities[idx + 1] * 0.85 + (ty - pos[idx + 1]) * 0.075;
-        velocities[idx + 2] = velocities[idx + 2] * 0.85 + (tz - pos[idx + 2]) * 0.075;
+        velocities[idx] = velocities[idx] * damping + (tx - pos[idx]) * lerpSpeed;
+        velocities[idx + 1] = velocities[idx + 1] * damping + (ty - pos[idx + 1]) * lerpSpeed;
+        velocities[idx + 2] = velocities[idx + 2] * damping + (tz - pos[idx + 2]) * lerpSpeed;
 
         pos[idx] += velocities[idx];
         pos[idx + 1] += velocities[idx + 1];
         pos[idx + 2] += velocities[idx + 2];
 
-        col[idx] += (targetColors[idx] - col[idx]) * 0.08;
-        col[idx + 1] += (targetColors[idx + 1] - col[idx + 1]) * 0.08;
-        col[idx + 2] += (targetColors[idx + 2] - col[idx + 2]) * 0.08;
+        col[idx] += (targetColors[idx] - col[idx]) * 0.09;
+        col[idx + 1] += (targetColors[idx + 1] - col[idx + 1]) * 0.09;
+        col[idx + 2] += (targetColors[idx + 2] - col[idx + 2]) * 0.09;
       }
 
       geometry.attributes.position.needsUpdate = true;
       geometry.attributes.color.needsUpdate = true;
 
+      // Animasi & Orientasi 3D Dinamis Merespons Tangan
+      particles.scale.set(hand3D.scale, hand3D.scale, hand3D.scale);
+      particles.position.x = hand3D.transX;
+      particles.position.y = hand3D.transY;
+
       if (isSolar) {
-        particles.rotation.y = elapsedTime * 0.05;
-        particles.rotation.x = 0.42;
+        particles.rotation.x = 0.44 + hand3D.rotX;
+        particles.rotation.y = elapsedTime * 0.05 + hand3D.rotY;
+        particles.rotation.z = hand3D.rotZ;
       } else if (isHeart) {
-        particles.rotation.y = Math.sin(elapsedTime * 0.7) * 0.2;
-        particles.rotation.x = 0;
+        particles.rotation.x = hand3D.rotX * 1.2;
+        particles.rotation.y = Math.sin(elapsedTime * 0.7) * 0.18 + hand3D.rotY * 1.2;
+        particles.rotation.z = Math.sin(elapsedTime * 0.5) * 0.04 + hand3D.rotZ * 1.2;
       } else if (isText) {
-        // Teks dikunci 100% menghadap depan agar terbaca sempurna
-        particles.rotation.x = 0;
-        particles.rotation.y = 0;
-        particles.rotation.z = 0;
+        // Huruf 3D bergerak mengikuti kemiringan tangan
+        particles.rotation.x = hand3D.rotX * 0.9;
+        particles.rotation.y = hand3D.rotY * 0.9;
+        particles.rotation.z = hand3D.rotZ * 0.9;
       } else {
-        particles.rotation.y = elapsedTime * 0.08;
-        particles.rotation.x = 0.35;
+        particles.rotation.x = 0.35 + hand3D.rotX;
+        particles.rotation.y = elapsedTime * 0.08 + hand3D.rotY;
+        particles.rotation.z = hand3D.rotZ;
       }
 
       renderer.render(scene, camera);
     }
 
-    function onWindowResize() {
+    function onResize() {
       camera.aspect = window.innerWidth / window.innerHeight;
       camera.updateProjectionMatrix();
       renderer.setSize(window.innerWidth, window.innerHeight);
     }
 
-    // =======================================================
-    // 3. MEDIAPIPE GESTURE DETECTION YANG RESPONSIF
-    // =======================================================
+    // =========================================================================
+    // 3. MEDIAPIPE GESTURE DETECTION & TRACKING 3D
+    // =========================================================================
     function dist(p1, p2) {
-      const dx = p1.x - p2.x, dy = p1.y - p2.y, dz = (p1.z || 0) - (p2.z || 0);
-      return Math.sqrt(dx * dx + dy * dy + dz * dz);
+      const dx = p1.x - p2.x, dy = p1.y - p2.y;
+      return Math.sqrt(dx * dx + dy * dy);
     }
 
     function detectGesture(lm) {
@@ -673,7 +715,6 @@
       const pinkyMcp = lm[17];
       const handScale = Math.max(0.1, dist(wrist, indexMcp));
 
-      // Deteksi jari lurus tanpa dipengaruhi kemiringan rotasi
       const isIndex = dist(lm[8], wrist) > dist(lm[6], wrist) * 1.14 && dist(lm[8], lm[5]) > dist(lm[6], lm[5]) * 1.18;
       const isMiddle = dist(lm[12], wrist) > dist(lm[10], wrist) * 1.14 && dist(lm[12], lm[9]) > dist(lm[10], lm[9]) * 1.18;
       const isRing = dist(lm[16], wrist) > dist(lm[14], wrist) * 1.14 && dist(lm[16], lm[13]) > dist(lm[14], lm[13]) * 1.18;
@@ -686,23 +727,18 @@
 
       const openCount = (isIndex ? 1 : 0) + (isMiddle ? 1 : 0) + (isRing ? 1 : 0) + (isPinky ? 1 : 0);
 
-      // 1. JARI TELUNJUK -> LOVE YOU
+      // 1. Telunjuk -> LOVE YOU
       if (isIndex && !isMiddle && !isRing && !isPinky) return 'index';
-
-      // 2. JARI TENGAH -> FUCK YOU
+      // 2. Jari Tengah -> FUCK YOU
       if (isMiddle && !isIndex && !isRing && !isPinky) return 'middle';
-
-      // 3. JARI JEMPOL -> MISS YOU
+      // 3. Jempol -> MISS YOU
       if (isThumbExtended && openCount === 0) return 'thumb';
-
-      // 4. KEPALAN TANGAN -> 3D HEART
+      // 4. Kepalan Tangan -> Heart
       if (openCount === 0 && isThumbCurled) return 'fist';
-
-      // 5. TELAPAK MELEBAR -> TATA SURYA
-      if (openCount >= 4 || openCount >= 3) return 'spread';
+      // 5. Melebar -> Tata Surya
+      if (openCount >= 3) return 'spread';
 
       if (openCount === 0) return 'fist';
-
       return activeGesture;
     }
 
@@ -722,10 +758,9 @@
         [5,9],[9,13],[13,17]
       ];
 
-      const col = gestureDetails[activeGesture]?.color || '#38bdf8';
-      skelCtx.strokeStyle = col;
+      skelCtx.strokeStyle = '#38bdf8';
       skelCtx.lineWidth = 2;
-      skelCtx.shadowColor = col;
+      skelCtx.shadowColor = '#38bdf8';
       skelCtx.shadowBlur = 8;
 
       conn.forEach(([i, j]) => {
@@ -738,7 +773,7 @@
     }
 
     // Inisialisasi
-    initThreeJS();
+    initThree();
 
     const videoElement = document.getElementById('webcam');
     const hands = new Hands({
@@ -758,9 +793,30 @@
         drawSkeleton(lm);
         const g = detectGesture(lm);
         setGesture(g);
+
+        // Ekstraksi 3D Telemetri Tangan
+        const wrist = lm[0];
+        const middleMcp = lm[9];
+        const hx = -((wrist.x + middleMcp.x) * 0.5 - 0.5) * 2.2;
+        const hy = -((wrist.y + middleMcp.y) * 0.5 - 0.5) * 2.2;
+        const roll = Math.atan2(middleMcp.y - wrist.y, -(middleMcp.x - wrist.x)) - Math.PI / 2;
+        const distScale = Math.hypot(wrist.x - middleMcp.x, wrist.y - middleMcp.y);
+
+        hand3D.targetRotY = hx * 1.1 + roll * 0.7;
+        hand3D.targetRotX = -hy * 0.9;
+        hand3D.targetRotZ = -roll * 0.6;
+        hand3D.targetTransX = hx * 1.6;
+        hand3D.targetTransY = hy * 1.2;
+        hand3D.targetScale = Math.min(Math.max(distScale / 0.22, 0.75), 1.45);
       } else {
         drawSkeleton(null);
         setGesture('idle');
+        hand3D.targetRotX = 0;
+        hand3D.targetRotY = 0;
+        hand3D.targetRotZ = 0;
+        hand3D.targetTransX = 0;
+        hand3D.targetTransY = 0;
+        hand3D.targetScale = 1.0;
       }
     });
 
@@ -777,7 +833,7 @@
         cameraUtils.start();
       })
       .catch((err) => {
-        console.error("Izin webcam ditolak atau kamera tidak ditemukan:", err);
+        console.error("Akses kamera tidak diizinkan atau tidak ditemukan:", err);
       });
   </script>
 </body>
